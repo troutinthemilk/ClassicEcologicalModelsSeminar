@@ -1,0 +1,187 @@
+---
+title: "Competition"
+output: html_document
+---
+
+
+```{r, echo=F, message=F}
+library(deSolve) #ode solver
+```
+
+We'll start with exponential growth $\frac{dN}{dt}=rN$. This model states that each of the $N$ individuals in the population produce $r$ new offspring, in addition to themselves, that continue to reproduce. Typically, we'll model just the $N$ females in the population since males are often negligible to this process.
+
+Lets look at how to numerically solve an ode using the `deSolve` package.
+
+```{r setup}
+library(deSolve)
+# parameters
+pars <- c(r=0.1)
+
+# initial state 
+init <- c(N = 1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r ExpGrowth}
+Exp_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- r*N 
+    return(list(c(N = d_N)))
+  })
+}
+
+#this line runs the model
+exp_model <- ode(init, times, Exp_mod, pars) 
+```
+
+
+Below we plot the simulated abundances over time.
+
+```{r plotModel}
+plot(exp_model[,1], exp_model[,2], type='l', lwd=2, xlab="Time", ylab="Abundance")
+```
+
+
+**Excercises**
+
+- Mess around with values of the parameter $r$. What if $r=0$? What if $r<1$? What are the biological interpretations of these values of $r$?
+
+- What happens to the numerical solver if $r$ is very large?
+
+- Does the initial population state affect the resulting population dynamics?
+
+## Intraspecific interactions
+
+We started to see how interactions are modeled last week though skipped over how we came up with these models. Today we'll dig into these interaction terms.
+
+Typically we use a couple of assumptions about how interactions occur. Its worth understanding this derivation since we will see  models of this form quite a bit.
+
+1) First we will consider a population of individuals that compete for resources. We will think about what happens during a very small time interval, denoted as $dt$. 
+2) Assume that each individual has the potential that interact with the remaining $N-1$ individuals. We can think of these interactions similar to flipping a coin. If the probability of interacting with any one individual is $\alpha$, then then the expected number of interactions one individual will have in the period $dt$ is $\alpha (N-1)$, just like if the probability of getting a heads on a coinflip is $p$, then over N flips the expected number of heads is $pN$. This is also equivalent to 
+3) The next step is to scale up the number of interactions from a single individual interacting with the others to all the individuals in the population. If each individual has $\alpha (N-1)$ interactions in the interval $dt$, then there are $\alpha N (N-1)$ total interactions in this period. Note that this is approximately equal to $\alpha N^2$ when $N$ is large, typically how this is modeled.
+4) Finally, we need to determine the sign of the interaction. If the interaction increases the growth rate, then the term is positive, if the interaction decreases the growth rate then the term is negative. 
+5) Now we can add all the interaction terms together to get the resulting ode model. Below we'll start just by considering negative interspecific interactions. 
+
+Now our model is $\frac{dN}{dt}=rN - \alpha N^2$. This is the logistic model that you have seen before, just rewritten in a slightly different way. 
+
+
+
+```{r Logistic_mod}
+Logistic_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- r*N - alpha*N^2
+    return(list(c(N = d_N)))
+  })
+}
+
+# parameters
+pars <- c(r=0.1, alpha = 0.1)
+
+# initial state 
+init <- c(N = 1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+
+
+#this line runs the model
+logistic_results <- ode(init, times, Logistic_mod, pars) 
+
+plot(logistic_results[,1], logistic_results[,2], type='l', lwd=2, xlab="Time", ylab="Abundance")
+```
+
+**Excercises**
+
+- Change the value of $\alpha$. What does increasing the value do? How about decreasing it? Does this make biological sense?
+
+- Change the initial values of the population. Do the resulting dynamics depend on the initial population state?
+
+
+## Interspecific interactions
+
+In order to account for interspecific interactions we need to model a second population. Here is a sytem of two populations that do not interact. We expect that if we modify one population, the other will not be effected.
+
+$$
+\frac{dN_1}{dt} = r_1 N_1 - \alpha_{11} N_1^2\\
+\frac{dN_2}{dt} = r_2 N_2 - \alpha_{22} N_2^2
+$$
+
+```{r TwoLogistic_mod}
+Logistic_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N1 <- r1*N1 - alpha11*N1^2
+    d_N2 <- r2*N2 - alpha22*N2^2
+    return(list(c(N1 = d_N1, N2 = d_N2)))
+  })
+}
+
+# parameters
+pars <- c(r1=0.1, alpha11=0.01, r2=0.1, alpha22=0.01)
+
+# initial state 
+init <- c(N1 = 1, N2=2)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+
+
+#this line runs the model
+logistic_results <- ode(init, times, Logistic_mod, pars) 
+
+plot(logistic_results[,1], logistic_results[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0,max(logistic_results[,-1])))
+lines(logistic_results[,1], logistic_results[,3], type='l', lwd=2, col="cornflowerblue")
+```
+
+**Excercises** 
+
+- Play around with the model parameters to convince yourself that modifying the dynamics of population 1 does not effect population 2 and vice versa. 
+
+
+The Lotka-Volterra competition model couples these populations with interaction terms between $N_1$ and $N_2$. Let's model the effect of population $N_2$ on $N_1$ with rate $\alpha_{12}$ and the effect of popuation $N_1$ on $N_2$ with rate $\alpha_{21}$. This gives us the following model:
+
+$$
+\frac{dN_1}{dt} = r_1 N_1 - \alpha_{11} N_1^2 - \alpha_{12} N_1 N_2\\
+\frac{dN_2}{dt} = r_2 N_2 - \alpha_{22} N_2^2 - \alpha_{21} N_2 N_1
+$$
+
+```{r LV_mod}
+LV_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N1 <- r1*N1 - alpha11*N1^2 - alpha12*N1*N2
+    d_N2 <- r2*N2 - alpha22*N2^2 - alpha21*N2*N1
+    return(list(c(N1 = d_N1, N2 = d_N2)))
+  })
+}
+
+# parameters
+pars <- c(r1=0.1, alpha11=0.01, r2=0.1, alpha22=0.01, alpha12=0.01, alpha21=0.01)
+
+# initial state 
+init <- c(N1 = 1, N2=2)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+
+
+#this line runs the model
+lv_results <- ode(init, times, LV_mod, pars) 
+
+plot(lv_results[,1], lv_results[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_results[,-1])))
+lines(lv_results[,1], lv_results[,3], type='l', lwd=2, col="cornflowerblue")
+```
+
+**Excercises**
+
+- Change some of the the parameters for $N_1$. Does this effect the population trajectory of $N_2$?
+
+- Play around with the relative strengths of interspecific and intraspecific competition. Which conditions enhance coexistence? Which conditions reduce coexistence?
+
+
+Recall that Adler et al. found that facilition played a role in the coexistence of many plant species. If you have extra time, modify the model above to include interspecific facilititation (a positive interspecific interaction rather than a negative interaction).  Does facilition enhance coexistence? 
+
+```{r facilition}
+#code here
+```
+

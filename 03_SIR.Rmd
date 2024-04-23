@@ -1,0 +1,132 @@
+---
+title: "Disease compartment models"
+output: html_document
+---
+
+
+```{r, echo=F, message=F}
+library(deSolve) #ode solver
+```
+
+We'll start by investigating the Susceptible-Infected (SI) model and the Susceptible-Infected-Susceptible (SIS) model, the simplest version of a disease compartment model. It describes how susceptible individuals can become infected then become susceptible again. It is of the form 
+
+
+$$
+\frac{dS}{dt} = -\beta S I + \gamma I \\
+\frac{dI}{dt} = \beta S I - \gamma I.
+$$
+
+We'll start with the SI model, a special case of the SIS model when $\gamma=0$. 
+
+```{r setup}
+library(deSolve)
+# parameters
+pars <- c(beta=0.001, gamma=0)
+
+# initial state 
+init <- c(S = 99, I=1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r SImodel}
+SIS_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- -beta*I*S + gamma*I
+    d_I <-  beta*I*S - gamma*I
+    return(list(c(S = d_S, I = d_I)))
+  })
+}
+
+#this line runs the model
+SI_model <- ode(init, times, SIS_mod, pars) 
+```
+
+
+Below we plot the simulated abundances over time.
+
+```{r plotModel}
+plot(SI_model[,1], SI_model[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0,100))
+lines(SI_model[,1], SI_model[,3], col="cornflowerblue", lwd=2)
+```
+
+
+**Excercises**
+
+- Mess around with value of the parameter $\beta$. What if $\beta=0$? 
+
+- Does the initial population state affect the resulting population dynamics?
+
+
+Now we will relax the assumption that the recovery rate is 0. We will assume that infected individuals will recover from infection and immediately become susceptible again.
+
+Use the code below to answer the questions about the SIS model.
+
+
+```{r SISmodel}
+pars <- c(beta=0.001, gamma=0)
+
+# initial state 
+init <- c(S = 99, I=1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+
+#this line runs the model
+SIS_model <- ode(init, times, SIS_mod, pars) 
+
+plot(SIS_model[,1], SIS_model[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0,100))
+lines(SIS_model[,1], SIS_model[,3], col="cornflowerblue", lwd=2)
+
+```
+
+**Excercises**
+
+- Before you start messing with the model, think about what you expect will happen to the dynamics when infecteds can become susceptible again. Will all the individuals still become infected? 
+
+- Try increasing the value of the $\gamma$ parameter. What does this do to the resulting dynamics? Is this what you expected including recovery would do? 
+
+
+
+## The SIR model
+
+Now we'll add a Recovery compartment (this could also be a Removed compartment if the infection is fatal). We'll assume that infected individuals become recovered with rate $\gamma$.
+
+
+```{r SIRinit}
+# parameters
+pars <- c(beta=0.001, gamma=0.01)
+
+# initial state 
+init <- c(S = 99, I=1, R=0)
+
+# times to solve the equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r SIRmodel}
+SIR_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- -beta*I*S 
+    d_I <-  beta*I*S - gamma*I
+    d_R <-  gamma*I
+    return(list(c(S=d_S, I=d_I, R=d_R)))
+  })
+}
+
+#this line runs the model
+SIR_model <- ode(init, times, SIR_mod, pars) 
+
+plot(SIR_model[,1], SIR_model[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0,100))
+lines(SIR_model[,1], SIR_model[,3], col="cornflowerblue", lwd=2)
+
+```
+
+
+**Excercises**
+
+- 
+
+-  
+

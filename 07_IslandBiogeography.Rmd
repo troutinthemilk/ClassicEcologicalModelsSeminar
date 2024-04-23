@@ -1,0 +1,145 @@
+---
+title: "Island Biogeography"
+output: html_document
+date: "2024-04-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+We'll model the colonization and extinction processes considered in MacArthur and Wilson's theory of Island Biogeography. These processes are hypothesized to drive the observed number of species on islands. We'll start by modeling the colonization and extinction rates separately, then you'll combine them.
+
+## Colonization
+
+Consider an island population some distance from the mainland which contains a species pool of size $M$. We can model the rate that species immigrate from the mainland to the island as $\frac{dS}{dt} = r (M - S)$, where $r$ is the rate of immigration. 
+
+
+```{r sim_setup}
+library(deSolve)
+# parameters
+pars <- c(r=0.1, M=100)
+# initial state 
+init <- c(S= 0)
+# times to solve the equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r immigration_run}
+#the immigration model
+immigration_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- r*(M-S) 
+    return(list(c(S = d_S)))
+  })
+}
+#this line runs the model
+imm_dyn <- ode(init, times, immigration_mod, pars) 
+
+plot(imm_dyn[,1], imm_dyn[,2], type='l', lwd=2, xlab="Time", ylab="Species")
+```
+
+
+**Exercises**
+
+- Modify the immigration rate, $r$, and the species pool $M$. Do increases/decreases lead to changes in dynamics that make ecological sense?
+
+## Extinction
+
+The next process to consider is extinction.  Consider an island with $S=100$ species and an extinction rate of $\delta$. 
+
+**Exercises**
+
+- Update the code below to model the extinction of those species:
+
+```{r extinction_run}
+pars <- c(delta=0.01)
+init <- c(S= 100)
+
+#the extinction model
+extinction_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- #PUT YOUR MODEL HERE!!!!!!!!!!
+    return(list(c(S = d_S)))
+  })
+}
+
+#ENTER CODE TO RUN MODEL AND PLOT RESULTS
+```
+
+
+## Island Biogeography
+
+Now we need to include both processes to understand the long-run dynamics of an island.
+
+**Exercises**
+
+- Now combine the colonization and extinction processes into a single model that describes the number of species on the island through time.
+- The equilibrium number of species (e.g., the number of species if you run the model forever) is $rM/(r+\delta)$. Check that your model is consistent with this calculation. 
+
+```{r islandBio}
+pars <- c(M=100, r=0.1, delta=0.01)
+init <- c(S= 0)
+
+#the extinction model
+islandBio_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- #PUT YOUR MODEL HERE!!!!!!!!!!
+    return(list(c(S = d_S)))
+  })
+}
+
+#ENTER CODE TO RUN MODEL AND PLOT RESULTS
+```
+
+## Island area and distance effects
+
+Now lets consider how these rates are influenced by island area, $A$ and distance from the mainland, $D$. 
+
+
+**Exercises**
+
+- First consider the effects of distance to the mainland, will this affect the colonization or extinction rates?
+
+  - Will increases in distance affect this process positively or negatively?
+  
+- Modify your model from above to include the effects of distance, you will need to include a new parameter $D$ that models distance. Feel free to ask for help here if you are not sure how to do this!
+
+```{r Distance}
+pars <- c(M=100, r0=1, r=0.001, delta=0.001, D=1e4)
+init <- c(S= 0)
+
+#the extinction model
+islandBio_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- #PUT YOUR MODEL HERE!!!!!!!!!!
+    return(list(c(S = d_S)))
+  })
+}
+
+#ENTER CODE TO RUN MODEL AND PLOT RESULTS
+```
+
+- Do increases in distance lead to increases or decreases in the equilibrium number of species?
+
+- Now lets consider the effects of island area, will this affect the colonization or extinction rates?
+
+  - Will increases in are affect this process positively or negatively?
+  
+- Modify your model from above to include the effects of Area, you will need to include a new parameter $A$ that models area. Do increases in Area map to the changes that you expected?
+
+```{r Area}
+pars <- c(M=100, r=0.1, delta0=1, delta=0.01, A=400)
+init <- c(S= 0)
+
+#the extinction model
+islandBio_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_S <- #PUT YOUR MODEL HERE!!!!!!!!!!
+    return(list(c(S = d_S)))
+  })
+}
+
+#ENTER CODE TO RUN MODEL AND PLOT RESULTS
+```
+

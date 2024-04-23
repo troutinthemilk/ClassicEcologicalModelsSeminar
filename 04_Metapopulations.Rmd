@@ -1,0 +1,161 @@
+---
+title: "The metapopulation model"
+output: html_document
+---
+
+
+```{r, echo=F, message=F}
+library(deSolve) #ode solver
+```
+
+A metapopulation is a population of populations. Groups of individuals are distributed in discrete patches in space, these patches are linked by dispersal. Levin's metapopulation model, keeps track of the number of occupied sites, $N$, out of a total of $K$ sites. The extinction probability at a site is $e$, the migration rate from another patch is $m$. The resulting model is:
+
+
+$$
+\frac{dN}{dt} =m N (1 - N/K) - eT.
+$$
+
+This model looks just like the logistic model, but with an extra extinction term. 
+
+Before we start with the simulations consider the following questions:
+
+**Excercises**
+
+- What do you expect to happen if the extinction rate is less than the migration rate?
+
+- What do you expect to happen if the extinction rate is greater than the migration rate?
+
+```{r setup}
+library(deSolve)
+# parameters
+pars <- c(m=0.11, e=0.1, K=100)
+
+# initial state 
+init <- c(N = 50)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r metamodel}
+meta_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- m*N*(1 - N/K) - e*N
+    return(list(c(N = d_N)))
+  })
+}
+
+#this line runs the model
+meta_model <- ode(init, times, meta_mod, pars) 
+```
+
+
+Below we plot the simulated abundances over time.
+
+```{r plotModel}
+plot(meta_model[,1], meta_model[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0,100))
+```
+
+**Excercises**
+
+- Test your predictions that you made above by varying the rate parameters, `m` and `e`.
+
+- If the initial state is `N=0`, what happens to the dynamics?
+
+
+
+One of the model assumptions in the metapopulation model is that the migration rate depends on the number of occupied sites. Lets modify the model to have a constant migration rate. 
+
+**Excercises**
+
+- Modify the code below to incorporate constant rates
+
+```{r meta2model}
+meta2_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- m*N*(1 - N/K) - e*N #modify this model
+    return(list(c(N = d_N)))
+  })
+}
+
+#this line runs the model
+pars <- c(m=0.1, e=0.1, K=100)
+meta2_model <- ode(init, times, meta2_mod, pars) 
+
+plot(meta2_model[,1], meta2_model[,2], type='l', lwd=2, xlab="Time", ylab="Occupied patches", ylim=c(0,100))
+```
+
+**Excercises**
+
+- Check the persistence conditions again. Are they the same? 
+
+- Try to find the equilibrium number of occupied sites mathematically (at equilibrium $dN/dt=0$).
+
+- If the initial state is `N=0`, what happens to the dynamics? Does this make sense?
+
+## The stochastic metapopulation model
+
+Differential equation models are often difficult to understand because we don't naturally think about processes in terms of rates and how those rates combine. Lets take a stab at developing the stochastic version of the metapopulation model. We'll look at a discrete-time model where we draw random numbers from a probability distribution for each step of the process. We'll need to be very explicit about each step of the process in order to keep track of our terms. We'll use the binomial distribution, which is like a flipping $N$ coins with a specified probability of success.
+
+We initialize a population with $N$ patches, the steps are then:
+
+1. Determine the number of new migrants that leave the $N$ patches with probability $m$, $N_\text{Migrate}$.
+
+2. Determine the number of those new migrants that land in an unoccupied patch, $N_\text{New occupied}$.
+
+3. Determine the number of occupied patches that don't go extinct, this is your new population $N_\text{New}$.
+
+Mathematically, these steps can be written as:
+$$
+\begin{align*}
+N_\text{Migrate} &\sim \text{Binomial}(N, m) \\
+N_\text{New occupied} &\sim \text{Binomial}(N_\text{Migrate}, 1 - N/K) \\
+N_\text{New} &\sim \text{Binomial}(N + N_\text{New occupied}, 1-e)\\
+\end{align*}
+$$
+
+We can program this model following the same steps:
+
+```{r stoch_meta}
+
+
+stoch_meta <- function(t_max, state, pars) {
+  N.vec <- numeric(t_max)
+  with(as.list(c(state, pars)), {
+    N.vec[1] <- N #initial number of occupied sites
+    for(i in 2:t_max) {
+      Nmigrate <- rbinom(1, N.vec[i-1], m) #number of migrants
+      Nnewocc  <- rbinom(1, Nmigrate, 1 - N.vec[i-1]/K) #number of migrants that land in unoccupied patches
+      N.vec[i] <- rbinom(1, N.vec[i-1] + Nnewocc, 1 - e) #number of occupied patches that go extinct
+    }
+    return(N.vec)
+  
+  })
+}
+
+t_max <- 100 #how long to run simulation
+pars <- c(m=0.1, e=0.075, K=100) 
+init <- c(N = 50)
+out <- stoch_meta(t_max, init, pars) 
+
+plot(out, type='l', xlab="Time", ylab="Occupied patches")
+```
+
+**Excercises**
+
+- In this model, why do $m$ and $e$ have to be between 0 and 1? Does the differential equation model have the same constraint?
+
+
+- Qualitatively what are the biggest differences between this output and the differential equation output? What happens when you run the model multiple times? How would you summarize these simulation results?
+
+- What happens when you run the model for a longer time (try 1000 time steps)?
+
+
+- For what types of questions might you prefer this model over the differential equation?
+
+- Update the model to have a constant migration rate from an outside source. In this case you can model $N_\text{New occupied}$ as ` Nnewocc <- sample(1:(K-N.vec[i]), size=1)` and you don't need to model `Nmigrate`.    
+
+```{r}
+#code here
+```
+

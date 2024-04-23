@@ -1,0 +1,109 @@
+---
+title: "Predation"
+output: html_document
+---
+
+
+```{r, echo=F, message=F}
+library(deSolve) #ode solver
+```
+
+Recall the classic Lotka-Volterra model:
+
+$$
+\begin{align*}
+\frac{dN}{dt} &= \alpha N - \beta N P \\
+\frac{dP}{dt} &= \delta \beta N P - \gamma P, 
+\end{align*}
+$$
+
+where $\alpha$ is the populaton growth rate of the prey ($N$), $\beta$ is the predation rate, $\delta$ is the conversion rate of prey into new predators ($P$), and $\gamma$ is the predator mortality rate.
+
+These ode's are difficult to solve and don't have forms that can be expressed using standard trigonometric functions, though they are periodic (i.e., they cycle). Instead we will explore how to numerically solve an ode using the `deSolve` package
+
+
+```{r setup}
+# parameters
+pars <- c(alpha = 1, beta = 0.2, delta = 0.5, gamma = 0.2)
+
+# initial state 
+init <- c(N = 2, P = 1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+```
+
+```{r LV_model}
+LV_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- alpha*N - beta*N*P
+    d_P <- delta*beta*N*P - gamma*P
+    return(list(c(N = d_N, P = d_P)))
+  })
+}
+
+#this line runs the model
+lv_results <- ode(init, times, LV_mod, pars) 
+```
+
+
+Below we plot the simulated abundances over time for the predator (in brown) and prey (in black).
+
+```{r plotLV}
+plot(lv_results[,1], lv_results[,2], type='l', ylim=c(0,max(lv_results[,2:3])), lwd=2, xlab="Time", ylab="Abundance"); lines(lv_results[,1], lv_results[,3], col="brown", lwd=2) 
+```
+
+Another popular representation of this system is the phase-plot, which shows the dependency between predators and their prey. 
+```{r LV_phaseplot}
+plot(x=lv_results[,2], y=lv_results[,3], type='l', lwd=2, xlab="Prey abundance", ylab="Predator abundance")
+```
+
+
+Excercises:
+
+- Try messing around with the initial state (the `init` vector). What about the cycle changes when you give the model new initial values? What about the cycle does not change when you give the model new initial values?
+
+- Try inputting the initial values of N = 2 and P = 5. What do you think is going on here?
+
+
+The Lotka-Volterra model uses a Type 1 functional response. This model assumes that amount of prey captured by a predator is linearly proportional to prey density. This is probably not a realistic model for a number of reasons including it does not account for the finite time it takes to capture a prey item, nor does it account for satiation. 
+
+
+We will account for these issues with a Type II functional response. This slows down the functional response at high prey densities as we discussed in class, in this model the interaction rate is $\beta P \frac{N}{1 + h N}$, where $h$ is the time it takes to handle a new prey item.
+
+```{r LVhandle_mod}
+LVhandle_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N <- alpha*N - beta*P*N/(1 + h*N)
+    d_P <- delta*beta*P*N/(1 + h*N) - gamma*P
+    return(list(c(N = d_N, P = d_P)))
+  })
+}
+
+# parameters
+pars <- c(alpha = 1, beta = 0.2, delta = 0.5, gamma = 0.2, h=0.01)
+
+# initial state 
+init <- c(N = 2, P = 1)
+
+# times to solve teh equation at
+times <- seq(0, 100, by = 0.1)
+
+
+#this line runs the model
+lv_results <- ode(init, times, LVhandle_mod, pars) 
+
+plot(lv_results[,1], lv_results[,2], type='l', ylim=c(0,max(lv_results[,2:3])), lwd=2, xlab="Time", ylab="Abundance"); lines(lv_results[,1], lv_results[,3], col="brown", lwd=2) 
+
+```
+
+
+
+```{r}
+
+
+```
+
+
+
+

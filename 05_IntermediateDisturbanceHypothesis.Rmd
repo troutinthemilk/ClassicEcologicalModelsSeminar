@@ -1,0 +1,219 @@
+---
+title: "The Intermediate Disturbance Hypothesis"
+output: html_document
+---
+
+
+```{r, echo=F, message=F}
+library(deSolve) #ode solver
+```
+
+The intermediate disturbance hypothesis (Connell, 1978) predicts that biodiversity will be maximized when disturbances occur at an 'intermediate' rate (the theory is unclear what intermediate means). We will look at species coexistence in the Lotka-Volterra model to see if this hypothesis holds water. The motivation behind the IDH is that the disturbance will interrupt the process of competitive exclusion. We will reproduce Figure 2 from Fox (2013).
+
+
+$$
+\frac{dN_1}{dt} = r_1 N_1 (1 - (N_1 + N_2)/K)\\
+\frac{dN_2}{dt} = r_2 N_2 (1 - (N_1 - N_2)/K)
+$$
+
+The Lotka-Volterra model described above is something we've already seen so I won't go into details. The only thing that is different compared to what we've seen before is that we assume both species share the same set of resource, $K$. Lets do a simulation to confirm this model behaves as expected.
+
+```{r, LV_mod}
+LV_mod <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    d_N1 <- r1*N1*(1 - (N1 + N2)/K - 0.01*(N1 + N2))
+    d_N2 <- r2*N2*(1 - (N1 + N2)/K)
+    return(list(c(N1 = d_N1, N2 = d_N2)))
+  })
+}
+
+
+# parameters
+pars <- c(r1=0.15, r2=0.1, K=100)
+
+# initial state 
+init <- c(N1 = 1, N2=1)
+
+# times to solve the equation at
+dt <- 0.01 #smallest time step
+nYears <- 100 #total number of years
+times <- seq(0, nYears, by = dt) #sequence of timesteps
+
+
+#this line runs the model
+lv_results <- ode(init, times, LV_mod, pars) 
+
+plot(lv_results[,1], lv_results[,2], type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_results[,-1])))
+lines(lv_results[,1], lv_results[,3], type='l', lwd=2, col="cornflowerblue")
+```
+
+**Exercises** 
+
+- What is the sum of the two populations at equilibrium? How does this relate to the model parameters above?
+
+- Play around with the growth rate parameters. What happens when they are unequal? 
+
+- Be sure to set the parameters back to `r1=0.15` and `r2=0.1` before continuing so we can reproduce the results from Fox 2013.
+
+## A disturbance in the force
+
+In it's classic formulation, the IDH proposes a perturbation to the dynamics. We'll modify $K$, the shared carrying capacity between the two species, similar to work by Huston (1979). Because we now need to pass in a value of $K$ for each timestep in the simulation, we cannot use the `deSolve` package. Instead we will simulate ourselves using a technique called the Euler method.
+
+Lets first check that this gives the same approach as above when $K$ is constant.
+
+```{r, LV_mod_IDH}
+
+#function to simulate fromt he lotka-volterra model 
+#more details here: https://en.wikipedia.org/wiki/Euler_method
+LV_mod_IDH_euler <- function(t, state, pars) {
+    dt <- t[2]-t[1]
+    N1.vec <- N2.vec <- numeric(length(t))
+    N1.vec[1] <- state$N1
+    N2.vec[1] <- state$N2
+    
+    for(i in 2:length(t)) {
+      d_N1 <- pars$r1*N1.vec[i-1]*(1 - (N1.vec[i-1] + N2.vec[i-1])/pars$K[i] - 0.01*(N1.vec[i-1] + N2.vec[i-1]))
+      d_N2 <- pars$r2*N2.vec[i-1]*(1 - (N1.vec[i-1] + N2.vec[i-1])/pars$K[i]) 
+      
+      N1.vec[i] <- N1.vec[i-1] + d_N1*dt
+      N2.vec[i] <- N2.vec[i-1] + d_N2*dt
+    }
+
+    return(data.frame(Time=t, N1 = N1.vec, N2 = N2.vec))
+  
+}
+
+# parameters
+K.perturb  <- rep(pars[3], length(times))
+pars.IDH <- list(r1=pars[1], r2=pars[2], K=K.perturb)
+
+# initial state 
+init <- list(N1 = 1, N2=1)
+
+lv_idh_results <- LV_mod_IDH_euler(t=times, state=init, pars=pars.IDH)
+
+
+plot(lv_idh_results$Time, lv_idh_results$N1, type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_idh_results[,-1])))
+lines(lv_idh_results$Time, lv_idh_results$N2, type='l', lwd=2, col="cornflowerblue")
+
+```
+
+**Exercicses**
+
+- Plot the vector `K.perturb` over time in the code chunk below. Is this what you expect?
+- Do the solutions of the ode look like the solutions we got with `deSolve`?
+
+```{r}
+#code here
+```
+
+
+Now lets vary $K$. We'll assume that $K$ becomes $1$ for a year every 10 years. Although this is contrived, we can imagine this will provide some insight into how the system will behave when $K$ varies randomly by year.
+
+```{r, K_perturb}
+# parameters, let K become K/10 every 10 years
+K.perturb  <- rep(pars[3], length(times))
+for(i in seq(10, nYears-1, by=10)/dt) {
+  K.perturb[i:(i+1/dt)] <- 1 
+} 
+
+pars.IDH <- list(r1=pars[1], r2=pars[2], K=K.perturb)
+
+# initial state 
+init <- list(N1 = 1, N2=1)
+
+lv_idh_results <- LV_mod_IDH_euler(t=times, state=init, pars=pars.IDH)
+
+```
+
+**Exercises** 
+
+- Plot the parameter K through time in the chunk below
+```{r}
+#code here
+```
+
+Below we plot the dynamics with (solid lines) and without disturbance:
+```{r}
+plot(lv_idh_results$Time, lv_idh_results$N1, type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_idh_results[,-1])))
+lines(lv_idh_results$Time, lv_idh_results$N2, type='l', lwd=2, col="cornflowerblue")
+
+lv_results <- data.frame(lv_results)
+lines(lv_results$time, lv_results$N1, lty=2)
+lines(lv_results$time, lv_results$N2, lty=2, col="cornflowerblue")
+```
+
+**Exercises** 
+
+- Plot the parameter K through time in the chunk below
+```{r}
+#code here
+```
+
+- Is it clear how K drives the dynamics above?
+
+
+
+Now lets see if using the average value of $K$ provides a reasonable summary of the dynamics.
+
+```{r, LV_means}
+
+pars.mean <- c(pars[1], pars[2], K=mean(pars.IDH$K))
+
+init <- c(N1=1, N2=1)
+lv_mean_results <- ode(init, times, LV_mod, pars.mean) 
+
+plot(lv_idh_results$Time, lv_idh_results$N1, type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_idh_results[,-1])))
+lines(lv_idh_results$Time, lv_idh_results$N2, type='l', lwd=2, col="cornflowerblue")
+
+lv_mean_results <- data.frame(lv_mean_results)
+lines(lv_mean_results$time, lv_mean_results$N1, lty=2)
+lines(lv_mean_results$time, lv_mean_results$N2, lty=2, col="cornflowerblue")
+```
+
+**Exercises** 
+
+- Why do you think using the mean value of $K$ fails to provide a reasonable summary of the dynamics averaged over time? 
+
+
+
+## Nonlinear averaging
+
+Understanding why taking the average of $K$ fails to summarize the time-average of the dynamical variables is a phenomenon known as nonlinear averaging. Because it is actually $1/K$ that is interacting witht the state variables, we need to take the average of $1/K$, then back transform. 
+
+Below we plot the dynamics using the appropriate mean parameter.
+
+```{r, LV_corrected}
+
+K.mean <-  1/mean(1/pars.IDH$K) #take the mean of 1/K then back transform to K.
+pars.mean <- c(pars[1], pars[2], K=K.mean)
+
+init <- c(N1=1, N2=1)
+lv_mean_results <- ode(init, times, LV_mod, pars.mean) 
+
+plot(lv_idh_results$Time, lv_idh_results$N1, type='l', lwd=2, xlab="Time", ylab="Abundance", ylim=c(0, max(lv_idh_results[,-1])))
+lines(lv_idh_results$Time, lv_idh_results$N2, type='l', lwd=2, col="cornflowerblue")
+
+lv_mean_results <- data.frame(lv_mean_results)
+lines(lv_mean_results$time, lv_mean_results$N1, lty=2)
+lines(lv_mean_results$time, lv_mean_results$N2, lty=2, col="cornflowerblue")
+```
+
+**Exercise**
+
+- Does this summary provide a reasonable summary of the time-averaged state variables?
+
+
+
+Let's dig into the behavior of these averages and see a bit more how they differ. Why should it matter if we use the mean of $K$ or the mean of $1/K$? It turns out that random variables have weird properties and the mean of function of $K$, is not the same as the function applied to mean of $K$. It turns out as the variability in $K$, gets larger the difference between these quanities gets bigger. Below is a comparison between the `mean(K)`, and `1/mean(1/K)` where $K$ is drawn from a normal distribution.
+
+```{r}
+K <- rnorm(n=1e4, mean=100, sd=0)
+mean(K)
+1/mean(1/K)
+```
+
+**Exercises**
+- Try increasing the `sd` to 0.1, 1, 10, 20, 50. Does the difference between mean(K) and 1/mean(1/K) get larger with `sd`?
+
+
