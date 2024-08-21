@@ -47,6 +47,7 @@ Jan 9
 
 Organizational meeting
 
+---
 		
 Predation
 
@@ -57,7 +58,7 @@ Kareva et al 2021
 Practical: Population growth and regulation	
 
 
-
+---
 
 Jan 30
 
@@ -70,7 +71,7 @@ Adler et al 2021
 Practical: Competition and coexistence
 
 
-
+---
 
 Feb 13	
 
@@ -111,13 +112,13 @@ Mar 19
 Spring break
 
 
-		
+---
 		
 Mar 26		
 
 Practical:Disturbance and spatial ecology
 
-
+---
 
 
 Apr 2
@@ -128,12 +129,15 @@ Harfoot et al. 2014
 
 Hoeks et al. 2023
 
+
+---
+
 Apr 9		
 
 Practical: Generalized ecosystem models	
 
 
-
+---
 
 Apr 16
 
@@ -142,6 +146,9 @@ Island biogeoraphy
 Macarthur & Wilson 1967
 
 Mologni & Burns 2023
+
+
+---
 
 Apr 23		
 
