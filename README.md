@@ -83,7 +83,7 @@ Keeling & Eams 2005
 Practical: Disease dynamics
 
 
-
+---
 
 Feb 27	
 
@@ -96,7 +96,7 @@ Wood et al 2018
 Practical: Metapopulations
 
 
-
+---
 
 Mar 12	
 
